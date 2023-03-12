@@ -7,30 +7,34 @@ $ErrorActionPreference='SilentlyContinue'
 Connect-AzureAD -Credential $Cred|Out-Null
 #endregion
  
-#Get list of disabled users from Terminated users OU
-$users=get-aduser -SearchBase 'OU=Terminated Users,DC=virginlifecare,DC=com' -Filter {Enabled -eq $false}|select userprincipalname
+#Get list of disabled users from Azure
+$users=Get-azureaduser -Filter "Accountenabled eq false" -All:$true
  
+#set number of expected groups on disabled users
+$number=<Change this to any number>
+
 #region Do the thing
 foreach($user in $users){
     $groups = Get-AzureADUserMembership -ObjectId $user.userprincipalname
-    if($groups.count -ge 4){
+    if($groups.count -gt $number){
             ++$countu
             foreach($group in $groups){
             $gtype=Get-Azureadmsgroup -id $group.ObjectId
-                if($gtype.Grouptypes -ne "DynamicMembership" -or ($gtype.OnPremisesSyncEnabled -eq "True")){
-                    try{
-                        Remove-AzureADGroupMember -ObjectId $group.ObjectId -MemberId $user.userprincipalname -ErrorAction Stop
-                        Write-Host $user.userprincipalname "removed from" $gtype.DisplayName
-                        ++$countg
+                if($gtype.Grouptypes -ne "DynamicMembership")
+                     if($gtype.OnPremisesSyncEnabled -eq "True"){
+                     try{
+                         Remove-AzureADGroupMember -ObjectId $group.ObjectId -MemberId $user.userprincipalname -ErrorAction Stop
+                         Write-Host $user.userprincipalname "removed from" $gtype.DisplayName
+                         ++$countg
+                         }
+                     catch{
+                        Write-warning $error[0]
                         }
-                    catch{
-                       Write-warning $error[0]
-                       }
-                    }
+                     }
         }
     }
 }
 #EndRegion
  
 #region Report goes here
-Write-host "This script found" $users.count "disabled users on-prem. There were" $countu "that had more than the 3 expected groups for disabled users and the script removed" $countg "assigned groups in total from those users" #endregion
+Write-host "This script found" $users.count "disabled users. There were" $countu "that had more than the expected groups for disabled users and the script removed" $countg "assigned groups in total from those users" #endregion
