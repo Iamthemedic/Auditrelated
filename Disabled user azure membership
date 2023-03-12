@@ -1,0 +1,40 @@
+#region Connect to AzureAD
+$adminuser= "<REDACTED>"
+$pass= "<REDACTED>"
+$SP = ConvertTo-SecureString $pass -AsPlainText -Force
+$Cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $adminuser, $SP
+$ErrorActionPreference='SilentlyContinue'
+Connect-AzureAD -Credential $Cred|Out-Null
+#endregion
+
+#region Exception groups definition
+$leave = ""
+$eadp = ""
+$duswop = ""
+$Allusers = ""
+$Svc1 = ""
+$svc2 = ""
+#endregion
+ 
+#region Get all disabled users
+$disabled=Get-azureaduser -Filter "Accountenabled eq false" -All:$true
+$count=0
+#endregion
+foreach($user in $disabled){
+    $groups=Get-AzureADUserMembership -ObjectId $user.objectid
+    if($groups.objectid -notin $leave,$svc1,$svc2){
+        foreach($group in $groups){
+            if($group.DirSyncEnabled -ne "WindowsServerAD"){
+                if($group.ObjectId -notin $eadp,$duswop,$allusers){
+                    try{
+                        Write-host $group.DisplayName"/"$group.objectid"is assigned to" $user.UserPrincipalName
+                        ++$count
+                        }
+                    catch{
+                    Write-Warning $error[0]}
+                }
+            }
+        }
+    }
+}
+Write-host $count "groups were found assigned to users"
