@@ -1,0 +1,17 @@
+$users=get-aduser -Filter {Enabled -eq $false}|select samaccountname
+ 
+foreach($user in $users)
+$groups = Get-ADUser $user.samaccountname -properties memberOf | % {$_.memberOf}
+#remove them from every group except domain users
+echo "$user was a member of the following groups:"
+foreach ($group in $groups) {
+    if ($group -NotLike "*Domain Users*") {
+        try{
+            Remove-ADPrincipalGroupMembership -Identity $user.samaccountname -MemberOf $group -Confirm:$false -Erroraction Stop
+            echo "$group"
+            }
+        catch{
+            Write-Warning $error[0]
+            }
+    }
+}
