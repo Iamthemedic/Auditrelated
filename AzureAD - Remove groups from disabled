@@ -1,0 +1,36 @@
+#region Connect to AzureAD
+$user= "<REDACTED>"
+$pass= "<REDACTED>"
+$SP = ConvertTo-SecureString $pass -AsPlainText -Force
+$Cred = new-object -typename System.Management.Automation.PSCredential -argumentlist $user, $SP
+$ErrorActionPreference='SilentlyContinue'
+Connect-AzureAD -Credential $Cred|Out-Null
+#endregion
+ 
+#Get list of disabled users from Terminated users OU
+$users=get-aduser -SearchBase 'OU=Terminated Users,DC=virginlifecare,DC=com' -Filter {Enabled -eq $false}|select userprincipalname
+ 
+#region Do the thing
+foreach($user in $users){
+    $groups = Get-AzureADUserMembership -ObjectId $user.userprincipalname
+    if($groups.count -ge 4){
+            ++$countu
+            foreach($group in $groups){
+            $gtype=Get-Azureadmsgroup -id $group.ObjectId
+                if($gtype.Grouptypes -ne "DynamicMembership" -or ($gtype.OnPremisesSyncEnabled -eq "True")){
+                    try{
+                        Remove-AzureADGroupMember -ObjectId $group.ObjectId -MemberId $user.userprincipalname -ErrorAction Stop
+                        Write-Host $user.userprincipalname "removed from" $gtype.DisplayName
+                        ++$countg
+                        }
+                    catch{
+                       Write-warning $error[0]
+                       }
+                    }
+        }
+    }
+}
+#EndRegion
+ 
+#region Report goes here
+Write-host "This script found" $users.count "disabled users on-prem. There were" $countu "that had more than the 3 expected groups for disabled users and the script removed" $countg "assigned groups in total from those users" #endregion
