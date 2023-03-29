@@ -1,4 +1,20 @@
-$users=get-aduser -Filter {Enabled -eq $false}|select samaccountname
+#Get todays date and convert value to match the value in extensionattribute3
+$date=get-date
+$newdate=$date.ToString("yyyy-MM-dd")
+
+#region Define users in and out of scope
+#Get a list of all disabled users in Active Directory that have a group assigned and have a start date before today
+$disabledUsers = Get-ADUser -Filter {Enabled -eq $false -and (Memberof -ne "{0}") -and (Extensionattribute3 -lt $newdate)} -Properties Memberof,extensionattribute3
+
+#region Filter out unnecessary users
+# Remove any results are a member of the group "users-on-approved-leave"
+$nonleave = $disabledusers |Where-Object { $_.MemberOf -notcontains 'CN=Users-on-approved-leave,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=virginlifecare,DC=com' -and $_.MemberOf -notcontains 'CN=Exempt-from-audit-reporting,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=virginlifecare,DC=com'}
+ 
+# Remove any users who have svc in the name and are on the $ghosts list
+$targetusers= $nonleave|Where-Object {
+    $_.samaccountname -notlike '*svc*' -and
+    $_.samaccountname -notlike '*service*'}
+#endregion
  
 foreach($user in $users)
 $groups = Get-ADUser $user.samaccountname -properties memberOf | % {$_.memberOf}
