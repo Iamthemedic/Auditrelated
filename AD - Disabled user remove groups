@@ -8,7 +8,7 @@ $disabledUsers = Get-ADUser -Filter {Enabled -eq $false -and (Memberof -ne "{0}"
 
 #region Filter out unnecessary users
 # Remove any results are a member of the group "users-on-approved-leave"
-$nonleave = $disabledusers |Where-Object { $_.MemberOf -notcontains 'CN=Users-on-approved-leave,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=virginlifecare,DC=com' -and $_.MemberOf -notcontains 'CN=Exempt-from-audit-reporting,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=virginlifecare,DC=com'}
+$nonleave = $disabledusers |Where-Object { $_.MemberOf -notcontains 'CN=Users-on-approved-leave,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=Domain,DC=com' -and $_.MemberOf -notcontains 'CN=Exempt-from-audit-reporting,OU=Local Users and Groups,OU=ACLs,OU=Groups,OU=Corporate,DC=virginlifecare,DC=com'}
  
 # Remove any users who have svc in the name and are on the $ghosts list
 $targetusers= $nonleave|Where-Object {
